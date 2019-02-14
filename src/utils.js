@@ -32,7 +32,12 @@ const getEndpoint = (obj, url) => {
     }
   });
 
-  if (!path) throw Error('Endpoint not found.');
+  if (!path)
+    throw Error(
+      `Endpoint not found.\n\nThe list of available APIs:\n${Object.keys(paths)
+        .map(value => value)
+        .join('\n')}`
+    );
 
   return path;
 };
