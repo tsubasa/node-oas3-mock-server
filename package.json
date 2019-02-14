@@ -5,7 +5,7 @@
   "description": "",
   "main": "src/index.js",
   "scripts": {
-    "start": "cross-env APIDOC_PATH=\"../api_doc_path\" micro -l tcp://localhost:8080 src"
+    "start": "cross-env APIDOC_PATH=\"./examples\" micro -l tcp://localhost:8080 src"
   },
   "keywords": [],
   "author": "",

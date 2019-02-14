@@ -19,7 +19,7 @@ OAS3.0で記述されたYAMLファイルかつ各APIに`example`の項目が記�
 ```json
 {
   "scripts": {
-    "start": "cross-env APIDOC_PATH=\"../api_doc_path\" micro -l tcp://localhost:8080 src"
+    "start": "cross-env APIDOC_PATH=\"./examples\" micro -l tcp://localhost:8080 src"
   }
 }
 ```
@@ -29,4 +29,14 @@ OAS3.0で記述されたYAMLファイルかつ各APIに`example`の項目が記�
 ```bash
 $ yarn install
 $ yarn start
+```
+
+## サンプル
+
+```bash
+$ curl -X GET http://localhost:8080/petstore/pets
+[{"id":1,"name":"lovely","tag":"dog"},{"id":2,"name":"robert","tag":"dog"},{"id":3,"name":"orafu","tag":"dog"}]
+
+$ curl -X GET http://localhost:8080/petstore/pets/1
+{"id":1,"name":"lovely","tag":"dog"}
 ```
