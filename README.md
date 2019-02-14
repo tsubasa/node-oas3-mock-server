@@ -28,5 +28,5 @@ OAS3.0で記述されたYAMLファイルかつ各APIに`example`の項目が記�
 
 ```bash
 $ yarn install
-$ yanr start
+$ yarn start
 ```
