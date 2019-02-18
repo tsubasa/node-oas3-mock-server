@@ -24,7 +24,7 @@ const getEndpoint = (obj, url) => {
   let path;
 
   Object.keys(paths).forEach(value => {
-    const pattern = `^${value.replace(/{\w+}/gi, '\\w+')}$`;
+    const pattern = `^${value.replace(/{\w+}/gi, '[\\w{}%]+')}$`;
     const re = new RegExp(pattern, 'i');
     const match = url.split('?')[0].match(re, value);
     if (match && match.length) {
