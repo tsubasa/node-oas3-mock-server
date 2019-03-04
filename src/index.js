@@ -2,13 +2,13 @@ const fs = require('fs');
 const yaml = require('js-yaml');
 const { send } = require('micro');
 const { router, get } = require('microrouter');
-const { getEndpoint, getRootPath, getIn, parseRef } = require('./utils');
+const { getEndpoint, getFilePath, getIn, parseRef } = require('./utils');
 
 const routing = (req, res) => {
   try {
     // 初期値
     const { url } = req;
-    const path = getRootPath(url);
+    const path = getFilePath(url);
 
     // YAML読み込み
     const doc = yaml.safeLoad(fs.readFileSync(`${process.env.APIDOC_PATH}/${path}.yaml`, 'utf8'));

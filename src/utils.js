@@ -1,13 +1,13 @@
 /* eslint-disable no-param-reassign, array-callback-return */
 
 /**
- * APIのrootパスを取得
+ * ファイルパスを取得
  * @param {string} url URLを指定
  */
-const getRootPath = url => {
-  const match = url.match(/^\/(\w+)\/.+/i);
-  if (match && match.length) {
-    return match[1];
+const getFilePath = url => {
+  const match = url.match(/^\/api\/(?:(admin)\/)?(\w+)\/.+/i);
+  if (Array.isArray(match) && match.length === 3) {
+    return match[1] ? `${match[1]}/${match[2]}` : match[2];
   }
   throw Error('URL Parse error.');
 };
@@ -94,4 +94,4 @@ const parseRef = (obj, raw = {}) => {
   return obj;
 };
 
-module.exports = { getRootPath, getRef, getIn, getEndpoint, parseRef };
+module.exports = { getFilePath, getRef, getIn, getEndpoint, parseRef };
