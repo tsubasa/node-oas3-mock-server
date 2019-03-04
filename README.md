@@ -34,9 +34,9 @@ $ yarn start
 ## サンプル
 
 ```bash
-$ curl -X GET http://localhost:8080/petstore/pets
+$ curl -X GET http://localhost:8080/api/petstore/pets
 [{"id":1,"name":"lovely","tag":"dog"},{"id":2,"name":"robert","tag":"dog"},{"id":3,"name":"orafu","tag":"dog"}]
 
-$ curl -X GET http://localhost:8080/petstore/pets/1
+$ curl -X GET http://localhost:8080/api/petstore/pets/1
 {"id":1,"name":"lovely","tag":"dog"}
 ```
