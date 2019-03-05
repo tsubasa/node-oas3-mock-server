@@ -32,12 +32,14 @@ const getEndpoint = (obj, url) => {
     }
   });
 
-  if (!path)
-    throw Error(
-      `Endpoint not found.\n\nThe list of available APIs:\n${Object.keys(paths)
-        .map(value => value)
-        .join('\n')}`
-    );
+  if (!path) {
+    const endpoints = Object.keys(paths)
+      .map(value => {
+        return Object.keys(paths[value]).map(method => `${method.toUpperCase().padEnd(6)} ${value}`);
+      })
+      .reduce((arr, val) => arr.concat(val), []);
+    throw Error(`Endpoint not found.\n\nThe list of available APIs:\n${endpoints.join('\n')}`);
+  }
 
   return path;
 };
