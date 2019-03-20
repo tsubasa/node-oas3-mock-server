@@ -1,9 +1,7 @@
-const fs = require('fs');
-const yaml = require('js-yaml');
+const deepExtend = require('deep-extend');
 const { send } = require('micro');
 const { router, get } = require('microrouter');
-const deepExtend = require('deep-extend');
-const { getEndpoint, getFilePath, getIn, parseRef } = require('./utils');
+const { loadYaml, getEndpoint, getFilePath, getIn, parseRef } = require('./utils');
 const { sampleFromSchema } = require('./swagger-utils');
 
 const routing = (req, res) => {
@@ -13,7 +11,7 @@ const routing = (req, res) => {
     const path = getFilePath(url);
 
     // YAML読み込み
-    const doc = yaml.safeLoad(fs.readFileSync(`${process.env.APIDOC_PATH}/${path}.yaml`, 'utf8'));
+    const doc = loadYaml(`${process.env.APIDOC_PATH}/${path}`);
 
     // APIのエンドポイントを取得
     const endpoint = getEndpoint(doc, url);

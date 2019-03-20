@@ -4,6 +4,39 @@ const yaml = require('js-yaml');
 const deepExtend = require('deep-extend');
 
 /**
+ * ファイルの存在確認
+ * @param {string} path ファイルパス
+ */
+const isExistFile = path => {
+  try {
+    fs.statSync(path);
+    return true;
+  } catch (err) {
+    return false;
+  }
+};
+
+/**
+ * Yamlファイルを読み込む
+ * @param {string} path ファイルパス
+ */
+const loadYaml = (path, encode = 'utf8') => {
+  path = path.replace(/\.[^/.]+$/, '');
+  const exts = ['.yml', '.yaml'];
+  let data;
+
+  exts.some(ext => {
+    if (isExistFile(`${path}${ext}`)) {
+      data = yaml.safeLoad(fs.readFileSync(`${path}${ext}`, encode));
+      return true;
+    }
+    return false;
+  });
+
+  return data;
+};
+
+/**
  * ファイルパスを取得
  * @param {string} url URLを指定
  */
@@ -73,9 +106,9 @@ const getRef = (obj, value = '') => {
     }
 
     // 外部ファイルを読み込む処理
-    const doc = yaml.safeLoad(fs.readFileSync(`${process.cwd()}/${process.env.APIDOC_PATH}/${paths[0]}`, 'utf8'));
-    const rep = replaceRefPath(doc, paths[0]);
-    return getIn(rep, keyIn);
+    const doc = loadYaml(`${process.cwd()}/${process.env.APIDOC_PATH}/${paths[0]}`);
+    const exObj = replaceRefPath(doc, paths[0]);
+    return getIn(exObj, keyIn);
   }
 
   if ((paths.length === 2 && paths[1]) || (paths.length === 1 && paths[0])) {
@@ -169,4 +202,4 @@ const replaceRefPath = (obj, path = '') => {
   return obj;
 };
 
-module.exports = { getFilePath, getRef, getIn, getEndpoint, parseRef };
+module.exports = { loadYaml, getFilePath, getRef, getIn, getEndpoint, parseRef };
