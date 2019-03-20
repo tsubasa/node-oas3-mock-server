@@ -1,4 +1,7 @@
-/* eslint-disable no-param-reassign, array-callback-return */
+/* eslint-disable no-param-reassign, array-callback-return, no-use-before-define */
+const fs = require('fs');
+const yaml = require('js-yaml');
+const deepExtend = require('deep-extend');
 
 /**
  * ファイルパスを取得
@@ -60,13 +63,33 @@ const getIn = (obj, path = []) => {
  * @param {string} value 参照先のパス
  */
 const getRef = (obj, value = '') => {
-  const keyIn = value.split('/');
+  const paths = value.split('#');
 
-  if (value.indexOf('#/') === 0) {
-    keyIn.shift();
+  if (paths.length === 2 && paths[0] && paths[1]) {
+    const keyIn = paths[1].split('/');
+
+    if (paths[1].indexOf('/') === 0) {
+      keyIn.shift();
+    }
+
+    // 外部ファイルを読み込む処理
+    const doc = yaml.safeLoad(fs.readFileSync(`${process.cwd()}/${process.env.APIDOC_PATH}/${paths[0]}`, 'utf8'));
+    const rep = replaceRefPath(doc, paths[0]);
+    return getIn(rep, keyIn);
   }
 
-  return getIn(obj, keyIn);
+  if ((paths.length === 2 && paths[1]) || (paths.length === 1 && paths[0])) {
+    const keyPath = paths[0] || paths[1];
+    const keyIn = keyPath.split('/');
+
+    if (keyPath.indexOf('/') === 0) {
+      keyIn.shift();
+    }
+
+    return getIn(obj, keyIn);
+  }
+
+  return undefined;
 };
 
 /**
@@ -85,10 +108,60 @@ const parseRef = (obj, raw = {}) => {
 
   if (!Array.isArray(obj) && typeof obj === 'object') {
     Object.keys(obj).map(value => {
-      if (value === '$ref') {
+      if (value.toLowerCase() === 'allof') {
+        let tmpObj = {};
+        const res = parseRef(obj[value], raw);
+
+        if (Array.isArray(res)) {
+          res.forEach(v => {
+            tmpObj = deepExtend(tmpObj, v);
+          });
+        } else {
+          tmpObj = res;
+        }
+
+        obj = tmpObj;
+      } else if (value.toLowerCase() === 'oneof') {
+        const tmpArr = parseRef(obj[value], raw);
+        obj = tmpArr[Math.floor(Math.random() * tmpArr.length)];
+      } else if (value === '$ref') {
         obj = parseRef(getRef(raw, obj[value]), raw);
+      } else if (
+        // 特殊パターンは除外
+        value.toLowerCase() === 'anyOf' ||
+        value.toLowerCase() === 'not' ||
+        value.toLowerCase() === 'discriminator'
+      ) {
+        delete obj[value];
       } else {
         obj[value] = parseRef(obj[value], raw);
+      }
+    });
+  }
+
+  return obj;
+};
+
+/**
+ * $refパスを置換する
+ * @param {} obj API Doc
+ * @param {*} path ファイルパス
+ */
+const replaceRefPath = (obj, path = '') => {
+  if (obj === null) return obj;
+
+  if (Array.isArray(obj)) {
+    return obj.map(value => {
+      return replaceRefPath(value, path);
+    });
+  }
+
+  if (!Array.isArray(obj) && typeof obj === 'object') {
+    Object.keys(obj).map(value => {
+      if (value === '$ref') {
+        obj[value] = obj[value].indexOf('#/' === 0) ? obj[value].replace('#/', `${path}#/`) : obj[value];
+      } else {
+        obj[value] = replaceRefPath(obj[value], path);
       }
     });
   }

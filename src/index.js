@@ -2,7 +2,9 @@ const fs = require('fs');
 const yaml = require('js-yaml');
 const { send } = require('micro');
 const { router, get } = require('microrouter');
+const deepExtend = require('deep-extend');
 const { getEndpoint, getFilePath, getIn, parseRef } = require('./utils');
+const { sampleFromSchema } = require('./swagger-utils');
 
 const routing = (req, res) => {
   try {
@@ -16,10 +18,15 @@ const routing = (req, res) => {
     // APIのエンドポイントを取得
     const endpoint = getEndpoint(doc, url);
 
-    // exampleを取得
-    const example = getIn(doc, ['paths', endpoint, 'get', 'responses', 200, 'content', 'application/json', 'example']);
+    // schemasを取得
+    const schemas =
+      getIn(doc, ['paths', endpoint, 'get', 'responses', 200, 'content', 'application/json', 'schema']) || {};
 
-    return send(res, 200, parseRef(example, doc));
+    // exampleを取得
+    const examples =
+      getIn(doc, ['paths', endpoint, 'get', 'responses', 200, 'content', 'application/json', 'example']) || {};
+
+    return send(res, 200, deepExtend(sampleFromSchema(parseRef(schemas, doc)), parseRef(examples, doc)));
   } catch (e) {
     if (e) {
       return send(res, 500, e.toString());
