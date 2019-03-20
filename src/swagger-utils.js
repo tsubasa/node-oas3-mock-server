@@ -87,14 +87,4 @@ const sampleFromSchema = (schema = {}) => {
   return primitive(schema);
 };
 
-const inferSchema = thing => {
-  if (thing.schema) thing = thing.schema;
-
-  if (thing.properties) {
-    thing.type = 'object';
-  }
-
-  return thing; // Hopefully this will have something schema like in it... `type` for example
-};
-
-module.exports = { sampleFromSchema, inferSchema };
+module.exports = { sampleFromSchema };
