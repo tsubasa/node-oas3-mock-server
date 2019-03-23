@@ -81,13 +81,62 @@ const getEndpoint = (obj, url) => {
 };
 
 /**
+ * schemaを取得
+ * @param {*} obj OAS Object
+ * @param {*} endpoint エンドポイント
+ * @param {*} method メソッド [get, post, put]
+ * @param {*} allowStatuses 許可するステータスコード
+ */
+const getSchema = (obj, endpoint, method, allowStatuses = [200, 201, 203, 204]) => {
+  if (allowStatuses.length === 0) return {};
+  return (
+    getIn(obj, ['paths', endpoint, method, 'responses', allowStatuses[0], 'content', 'application/json', 'schema']) ||
+    getSchema(obj, endpoint, method, allowStatuses.slice(1))
+  );
+};
+
+/**
+ * exampleを取得
+ * @param {*} obj OAS Object
+ * @param {*} endpoint エンドポイント
+ * @param {*} method メソッド [get, post, put]
+ * @param {*} allowStatuses 許可するステータスコード
+ */
+const getExample = (obj, endpoint, method, allowStatuses = [200, 201, 203, 204]) => {
+  if (allowStatuses.length === 0) return {};
+  return (
+    getIn(obj, ['paths', endpoint, method, 'responses', allowStatuses[0], 'content', 'application/json', 'example']) ||
+    getSchema(obj, endpoint, method, allowStatuses.slice(1))
+  );
+};
+
+/**
+ * status codeを取得
+ * @param {*} obj OAS Object
+ * @param {*} endpoint エンドポイント
+ * @param {*} method メソッド [get, post, put]
+ * @param {*} allowStatuses 許可するステータスコード
+ */
+const getStatusCode = (obj, endpoint, method, allowStatuses = [200, 201, 203, 204]) => {
+  if (allowStatuses.length === 0) return undefined;
+  return (
+    (getIn(obj, ['paths', endpoint, method, 'responses', allowStatuses[0]], 'content') && allowStatuses[0]) ||
+    getStatusCode(obj, endpoint, method, allowStatuses.slice(1))
+  );
+};
+
+/**
  * ネストされたオブジェクトから対象のデータを取得する
  * @param {object} obj objectを指定
  * @param {array} path objectのキーを配列で指定
  */
 const getIn = (obj, path = []) => {
-  if (path.length === 0) return obj;
-  return getIn(obj[path[0]], path.slice(1));
+  try {
+    if (path.length === 0) return obj;
+    return getIn(obj[path[0]], path.slice(1));
+  } catch (e) {
+    return undefined;
+  }
 };
 
 /**
@@ -202,4 +251,4 @@ const replaceRefPath = (obj, path = '') => {
   return obj;
 };
 
-module.exports = { loadYaml, getFilePath, getRef, getIn, getEndpoint, parseRef };
+module.exports = { loadYaml, getFilePath, getRef, getIn, getEndpoint, getSchema, getExample, getStatusCode, parseRef };

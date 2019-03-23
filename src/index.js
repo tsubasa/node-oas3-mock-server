@@ -1,7 +1,7 @@
 const deepExtend = require('deep-extend');
 const { send } = require('micro');
-const { router, get } = require('microrouter');
-const { loadYaml, getEndpoint, getFilePath, getIn, parseRef } = require('./utils');
+const { router, get, post, put } = require('microrouter');
+const { loadYaml, getEndpoint, getFilePath, getSchema, getExample, getStatusCode, parseRef } = require('./utils');
 const { sampleFromSchema } = require('./swagger-utils');
 
 const routing = (req, res) => {
@@ -17,14 +17,15 @@ const routing = (req, res) => {
     const endpoint = getEndpoint(doc, url);
 
     // schemasを取得
-    const schemas =
-      getIn(doc, ['paths', endpoint, 'get', 'responses', 200, 'content', 'application/json', 'schema']) || {};
+    const schemas = getSchema(doc, endpoint, req.method.toLowerCase());
 
     // exampleを取得
-    const examples =
-      getIn(doc, ['paths', endpoint, 'get', 'responses', 200, 'content', 'application/json', 'example']) || {};
+    const examples = getExample(doc, endpoint, req.method.toLowerCase());
 
-    return send(res, 200, deepExtend(sampleFromSchema(parseRef(schemas, doc)), parseRef(examples, doc)));
+    // statusを取得
+    const statusCode = getStatusCode(doc, endpoint, req.method.toLowerCase());
+
+    return send(res, statusCode, deepExtend(sampleFromSchema(parseRef(schemas, doc)), parseRef(examples, doc)));
   } catch (e) {
     if (e) {
       return send(res, 500, e.toString());
@@ -33,4 +34,4 @@ const routing = (req, res) => {
   }
 };
 
-module.exports = router(get('/*', routing));
+module.exports = router(get('/*', routing), post('/*', routing), put('/*', routing));

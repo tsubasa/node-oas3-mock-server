@@ -5,7 +5,7 @@ OAS3.0(OpenAPI Specification 3.0)で定義されているYAMLファイルをロ�
 ## 機能
 
 - OAS3.0で定義されているYAMLファイルを読み込みモックサーバーを立てる
-- GETのみ対応
+- GET, POST, PUTに対応
 - 定義参照対応 (`$ref: path/to/`)
 
 ## 補足
