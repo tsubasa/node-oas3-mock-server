@@ -1,15 +1,16 @@
 /* eslint-disable no-param-reassign, array-callback-return, no-use-before-define */
 const fs = require('fs');
+const path = require('path');
 const yaml = require('js-yaml');
 const deepExtend = require('deep-extend');
 
 /**
  * ファイルの存在確認
- * @param {string} path ファイルパス
+ * @param {string} filePath ファイルパス
  */
-const isExistFile = path => {
+const isExistFile = filePath => {
   try {
-    fs.statSync(path);
+    fs.statSync(filePath);
     return true;
   } catch (err) {
     return false;
@@ -18,20 +19,22 @@ const isExistFile = path => {
 
 /**
  * Yamlファイルを読み込む
- * @param {string} path ファイルパス
+ * @param {string} filePath ファイルパス
  */
-const loadYaml = (path, encode = 'utf8') => {
-  path = path.replace(/\.[^/.]+$/, '');
+const loadYaml = (filePath, encode = 'utf8') => {
+  filePath = path.resolve(filePath.replace(/\.[^/.]+$/, ''));
   const exts = ['.yml', '.yaml'];
   let data;
 
   exts.some(ext => {
-    if (isExistFile(`${path}${ext}`)) {
-      data = yaml.safeLoad(fs.readFileSync(`${path}${ext}`, encode));
+    if (isExistFile(`${filePath}${ext}`)) {
+      data = yaml.safeLoad(fs.readFileSync(`${filePath}${ext}`, encode));
       return true;
     }
     return false;
   });
+
+  if (!data) throw Error(`Failed to open file: ${filePath}[${exts.join('|')}]`);
 
   return data;
 };
@@ -57,18 +60,18 @@ const getEndpoint = (obj, url) => {
   if (typeof obj !== 'object') throw Error('Not object');
   if (!('paths' in obj)) throw Error('Not paths');
   const { paths } = obj;
-  let path;
+  let endpoint;
 
   Object.keys(paths).forEach(value => {
     const pattern = `^${value.replace(/{\w+}/gi, '[\\w{}%]+')}$`;
     const re = new RegExp(pattern, 'i');
     const match = url.split('?')[0].match(re, value);
     if (match && match.length) {
-      path = value;
+      endpoint = value;
     }
   });
 
-  if (!path) {
+  if (!endpoint) {
     const endpoints = Object.keys(paths)
       .map(value => {
         return Object.keys(paths[value]).map(method => `${method.toUpperCase().padEnd(6)} ${value}`);
@@ -77,7 +80,7 @@ const getEndpoint = (obj, url) => {
     throw Error(`Endpoint not found.\n\nThe list of available APIs:\n${endpoints.join('\n')}`);
   }
 
-  return path;
+  return endpoint;
 };
 
 /**
@@ -106,7 +109,7 @@ const getExample = (obj, endpoint, method, allowStatuses = [200, 201, 203, 204])
   if (allowStatuses.length === 0) return {};
   return (
     getIn(obj, ['paths', endpoint, method, 'responses', allowStatuses[0], 'content', 'application/json', 'example']) ||
-    getSchema(obj, endpoint, method, allowStatuses.slice(1))
+    getExample(obj, endpoint, method, allowStatuses.slice(1))
   );
 };
 
@@ -128,12 +131,12 @@ const getStatusCode = (obj, endpoint, method, allowStatuses = [200, 201, 203, 20
 /**
  * ネストされたオブジェクトから対象のデータを取得する
  * @param {object} obj objectを指定
- * @param {array} path objectのキーを配列で指定
+ * @param {array} keys objectのキーを配列で指定
  */
-const getIn = (obj, path = []) => {
+const getIn = (obj, keys = []) => {
   try {
-    if (path.length === 0) return obj;
-    return getIn(obj[path[0]], path.slice(1));
+    if (keys.length === 0) return obj;
+    return getIn(obj[keys[0]], keys.slice(1));
   } catch (e) {
     return undefined;
   }
@@ -154,9 +157,12 @@ const getRef = (obj, value = '') => {
       keyIn.shift();
     }
 
+    // TODO: 相対パスや絶対パスの解決が必要
+    const resolvePath = paths[0].replace(/^\.\.\//, '');
+
     // 外部ファイルを読み込む処理
-    const doc = loadYaml(`${process.cwd()}/${process.env.APIDOC_PATH}/${paths[0]}`);
-    const exObj = replaceRefPath(doc, paths[0]);
+    const doc = loadYaml(`${process.cwd()}/${process.env.APIDOC_PATH}/${resolvePath}`);
+    const exObj = replaceRefPath(doc, resolvePath);
     return getIn(exObj, keyIn);
   }
 
@@ -180,7 +186,7 @@ const getRef = (obj, value = '') => {
  * @param {object} raw オブジェクトを指定
  */
 const parseRef = (obj, raw = {}) => {
-  if (obj === null) return obj;
+  if (obj === null || typeof obj === 'undefined') return obj;
 
   if (Array.isArray(obj)) {
     return obj.map(value => {
@@ -227,23 +233,23 @@ const parseRef = (obj, raw = {}) => {
 /**
  * $refパスを置換する
  * @param {} obj API Doc
- * @param {*} path ファイルパス
+ * @param {*} filePath ファイルパス
  */
-const replaceRefPath = (obj, path = '') => {
-  if (obj === null) return obj;
+const replaceRefPath = (obj, filePath = '') => {
+  if (!obj) return obj;
 
   if (Array.isArray(obj)) {
     return obj.map(value => {
-      return replaceRefPath(value, path);
+      return replaceRefPath(value, filePath);
     });
   }
 
   if (!Array.isArray(obj) && typeof obj === 'object') {
     Object.keys(obj).map(value => {
       if (value === '$ref') {
-        obj[value] = obj[value].indexOf('#/' === 0) ? obj[value].replace('#/', `${path}#/`) : obj[value];
+        obj[value] = obj[value].indexOf('#/' === 0) ? obj[value].replace('#/', `${filePath}#/`) : obj[value];
       } else {
-        obj[value] = replaceRefPath(obj[value], path);
+        obj[value] = replaceRefPath(obj[value], filePath);
       }
     });
   }
@@ -251,4 +257,4 @@ const replaceRefPath = (obj, path = '') => {
   return obj;
 };
 
-module.exports = { loadYaml, getFilePath, getRef, getIn, getEndpoint, getSchema, getExample, getStatusCode, parseRef };
+module.exports = { loadYaml, getFilePath, getEndpoint, getSchema, getExample, getStatusCode, parseRef };
