@@ -8,13 +8,13 @@ const routing = (req, res) => {
   try {
     // 初期値
     const { url } = req;
-    const path = getFilePath(url);
+    const filePath = getFilePath(url);
 
     // YAML読み込み
-    const doc = loadYaml(`${process.env.APIDOC_PATH}/${path}`);
+    const doc = loadYaml(`${process.env.APIDOC_PATH}/${filePath}`);
 
     // APIのエンドポイントを取得
-    const endpoint = getEndpoint(doc, url);
+    const endpoint = getEndpoint(doc, url, req.method.toLowerCase());
 
     // schemasを取得
     const schemas = getSchema(doc, endpoint, req.method.toLowerCase());
@@ -25,7 +25,11 @@ const routing = (req, res) => {
     // statusを取得
     const statusCode = getStatusCode(doc, endpoint, req.method.toLowerCase());
 
-    return send(res, statusCode, deepExtend(sampleFromSchema(parseRef(schemas, doc)), parseRef(examples, doc)));
+    return send(
+      res,
+      statusCode,
+      deepExtend(sampleFromSchema(parseRef(schemas, doc, filePath)), parseRef(examples, doc, filePath))
+    );
   } catch (e) {
     if (e) {
       return send(res, 500, e.toString());

@@ -52,11 +52,11 @@ const getFilePath = url => {
 };
 
 /**
- * エンドポイントを取得する
+ * URLからエンドポイントを取得する
  * @param {object} obj オブジェクトを指定
  * @param {string} url URLを指定
  */
-const getEndpoint = (obj, url) => {
+const getEndpoint = (obj, url, method = '') => {
   if (typeof obj !== 'object') throw Error('Not object');
   if (!('paths' in obj)) throw Error('Not paths');
   const { paths } = obj;
@@ -71,10 +71,10 @@ const getEndpoint = (obj, url) => {
     }
   });
 
-  if (!endpoint) {
+  if (!endpoint || !hasMethod(obj, endpoint, method)) {
     const endpoints = Object.keys(paths)
       .map(value => {
-        return Object.keys(paths[value]).map(method => `${method.toUpperCase().padEnd(6)} ${value}`);
+        return Object.keys(paths[value]).map(val => `${val.toUpperCase().padEnd(6)} ${value}`);
       })
       .reduce((arr, val) => arr.concat(val), []);
     throw Error(`Endpoint not found.\n\nThe list of available APIs:\n${endpoints.join('\n')}`);
@@ -85,10 +85,10 @@ const getEndpoint = (obj, url) => {
 
 /**
  * schemaを取得
- * @param {*} obj OAS Object
- * @param {*} endpoint エンドポイント
- * @param {*} method メソッド [get, post, put]
- * @param {*} allowStatuses 許可するステータスコード
+ * @param {object} obj OAS Object
+ * @param {string} endpoint エンドポイント
+ * @param {string} method メソッド [get, post, put]
+ * @param {array} allowStatuses 許可するステータスコード
  */
 const getSchema = (obj, endpoint, method, allowStatuses = [200, 201, 203, 204]) => {
   if (allowStatuses.length === 0) return {};
@@ -100,10 +100,10 @@ const getSchema = (obj, endpoint, method, allowStatuses = [200, 201, 203, 204]) 
 
 /**
  * exampleを取得
- * @param {*} obj OAS Object
- * @param {*} endpoint エンドポイント
- * @param {*} method メソッド [get, post, put]
- * @param {*} allowStatuses 許可するステータスコード
+ * @param {object} obj OAS Object
+ * @param {string} endpoint エンドポイント
+ * @param {string} method メソッド [get, post, put]
+ * @param {array} allowStatuses 許可するステータスコード
  */
 const getExample = (obj, endpoint, method, allowStatuses = [200, 201, 203, 204]) => {
   if (allowStatuses.length === 0) return {};
@@ -115,17 +115,27 @@ const getExample = (obj, endpoint, method, allowStatuses = [200, 201, 203, 204])
 
 /**
  * status codeを取得
- * @param {*} obj OAS Object
- * @param {*} endpoint エンドポイント
- * @param {*} method メソッド [get, post, put]
- * @param {*} allowStatuses 許可するステータスコード
+ * @param {object} obj OAS Object
+ * @param {string} endpoint エンドポイント
+ * @param {string} method メソッド [get, post, put]
+ * @param {array} allowStatuses 許可するステータスコード
  */
 const getStatusCode = (obj, endpoint, method, allowStatuses = [200, 201, 203, 204]) => {
   if (allowStatuses.length === 0) return undefined;
   return (
-    (getIn(obj, ['paths', endpoint, method, 'responses', allowStatuses[0]], 'content') && allowStatuses[0]) ||
+    (getIn(obj, ['paths', endpoint, method, 'responses', allowStatuses[0]]) && allowStatuses[0]) ||
     getStatusCode(obj, endpoint, method, allowStatuses.slice(1))
   );
+};
+
+/**
+ * メソッドの有無
+ * @param {object} obj OAS Object
+ * @param {string} endpoint エンドポイント
+ * @param {string} method メソッド [get, post, put]
+ */
+const hasMethod = (obj, endpoint, method) => {
+  return !!getIn(obj, ['paths', endpoint, method]);
 };
 
 /**
@@ -146,8 +156,9 @@ const getIn = (obj, keys = []) => {
  * $refで指定されたパスからデータを取得
  * @param {object} obj オブジェクト
  * @param {string} value 参照先のパス
+ * @param {string} currentPath 作業ファイルのパスを指定
  */
-const getRef = (obj, value = '') => {
+const getRef = (obj, value = '', currentPath = '') => {
   const paths = value.split('#');
 
   if (paths.length === 2 && paths[0] && paths[1]) {
@@ -157,12 +168,15 @@ const getRef = (obj, value = '') => {
       keyIn.shift();
     }
 
-    // TODO: 相対パスや絶対パスの解決が必要
-    const resolvePath = paths[0].replace(/^\.\.\//, '');
+    const resolveFilePath = path.resolve(
+      `${process.cwd()}/${process.env.APIDOC_PATH}`,
+      path.dirname(currentPath),
+      paths[0]
+    );
 
     // 外部ファイルを読み込む処理
-    const doc = loadYaml(`${process.cwd()}/${process.env.APIDOC_PATH}/${resolvePath}`);
-    const exObj = replaceRefPath(doc, resolvePath);
+    const doc = loadYaml(resolveFilePath);
+    const exObj = replaceRefPath(doc, resolveFilePath);
     return getIn(exObj, keyIn);
   }
 
@@ -184,13 +198,14 @@ const getRef = (obj, value = '') => {
  * $refでポインタ参照されているキーに参照先のデータを代入する
  * @param {object} obj オブジェクトを指定
  * @param {object} raw オブジェクトを指定
+ * @param {string} currentPath 作業ファイルのパスを指定
  */
-const parseRef = (obj, raw = {}) => {
+const parseRef = (obj, raw = {}, currentPath = '') => {
   if (obj === null || typeof obj === 'undefined') return obj;
 
   if (Array.isArray(obj)) {
     return obj.map(value => {
-      return parseRef(value, raw);
+      return parseRef(value, raw, currentPath);
     });
   }
 
@@ -198,7 +213,7 @@ const parseRef = (obj, raw = {}) => {
     Object.keys(obj).map(value => {
       if (value.toLowerCase() === 'allof') {
         let tmpObj = {};
-        const res = parseRef(obj[value], raw);
+        const res = parseRef(obj[value], raw, currentPath);
 
         if (Array.isArray(res)) {
           res.forEach(v => {
@@ -210,10 +225,10 @@ const parseRef = (obj, raw = {}) => {
 
         obj = tmpObj;
       } else if (value.toLowerCase() === 'oneof') {
-        const tmpArr = parseRef(obj[value], raw);
+        const tmpArr = parseRef(obj[value], raw, currentPath);
         obj = tmpArr[Math.floor(Math.random() * tmpArr.length)];
       } else if (value === '$ref') {
-        obj = parseRef(getRef(raw, obj[value]), raw);
+        obj = parseRef(getRef(raw, obj[value], currentPath), raw, currentPath);
       } else if (
         // 特殊パターンは除外
         value.toLowerCase() === 'anyOf' ||
@@ -222,7 +237,7 @@ const parseRef = (obj, raw = {}) => {
       ) {
         delete obj[value];
       } else {
-        obj[value] = parseRef(obj[value], raw);
+        obj[value] = parseRef(obj[value], raw, currentPath);
       }
     });
   }
@@ -232,8 +247,8 @@ const parseRef = (obj, raw = {}) => {
 
 /**
  * $refパスを置換する
- * @param {} obj API Doc
- * @param {*} filePath ファイルパス
+ * @param {object} obj API Doc
+ * @param {string} filePath ファイルパス
  */
 const replaceRefPath = (obj, filePath = '') => {
   if (!obj) return obj;
