@@ -121,7 +121,7 @@ const getExample = (obj, endpoint, method, allowStatuses = [200, 201, 203, 204])
  * @param {array} allowStatuses 許可するステータスコード
  */
 const getStatusCode = (obj, endpoint, method, allowStatuses = [200, 201, 203, 204]) => {
-  if (allowStatuses.length === 0) return undefined;
+  if (allowStatuses.length === 0) throw Error('Response status code not defined.');
   return (
     (getIn(obj, ['paths', endpoint, method, 'responses', allowStatuses[0]]) && allowStatuses[0]) ||
     getStatusCode(obj, endpoint, method, allowStatuses.slice(1))

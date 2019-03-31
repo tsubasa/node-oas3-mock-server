@@ -1,16 +1,16 @@
 # node-oas3-mock-server
 
-OAS3.0(OpenAPI Specification 3.0)で定義されているYAMLファイルをロードしてAPIのモックサーバーを立てる
+[OAS3.0](https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.0.md)(OpenAPI Specification 3.0)で定義されているYAMLファイルをロードしてAPIのモックサーバーを立てる
 
 ## 機能
 
-- OAS3.0で定義されているYAMLファイルを読み込みモックサーバーを立てる
-- GET, POST, PUTに対応
+- OAS3.0で定義されているYAMLファイルを読み込みAPIモックサーバーを立てる
+- GET, POST, PUT, DELETE メソッドに対応
 - 定義参照対応 (`$ref: path/to/`)
 
 ## 補足
 
-OAS3.0で記述されたYAMLファイルかつ各APIに`example`の項目が記述されている必要があります。
+OAS3.0で記述されたYAMLファイルかつAPIにschemaまたはexampleの定義が記述されている必要があります。
 
 ## 使い方
 
