@@ -224,14 +224,12 @@ const parseRef = (obj, raw = {}, currentPath = '') => {
         }
 
         obj = tmpObj;
-      } else if (value.toLowerCase() === 'oneof') {
-        const tmpArr = parseRef(obj[value], raw, currentPath);
-        obj = tmpArr[Math.floor(Math.random() * tmpArr.length)];
+      } else if (value.toLowerCase() === 'oneof' || value.toLowerCase() === 'anyof') {
+        obj[value] = parseRef(obj[value], raw, currentPath);
       } else if (value === '$ref') {
         obj = parseRef(getRef(raw, obj[value], currentPath), raw, currentPath);
       } else if (
         // 特殊パターンは除外
-        value.toLowerCase() === 'anyOf' ||
         value.toLowerCase() === 'not' ||
         value.toLowerCase() === 'discriminator'
       ) {
