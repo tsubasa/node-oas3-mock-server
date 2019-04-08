@@ -44,7 +44,7 @@ const loadYaml = (filePath, encode = 'utf8') => {
  * @param {string} url URLを指定
  */
 const getFilePath = url => {
-  const match = url.match(/^\/api\/(?:(admin)\/)?(\w+)\/.+/i);
+  const match = url.match(/^\/api\/(?:(admin)\/)?(\w+)/i);
   if (Array.isArray(match) && match.length === 3) {
     return match[1] ? `${match[1]}/${match[2]}` : match[2];
   }
@@ -260,7 +260,13 @@ const replaceRefPath = (obj, filePath = '') => {
   if (!Array.isArray(obj) && typeof obj === 'object') {
     Object.keys(obj).map(value => {
       if (value === '$ref') {
-        obj[value] = obj[value].indexOf('#/' === 0) ? obj[value].replace('#/', `${filePath}#/`) : obj[value];
+        obj[value] =
+          // eslint-disable-next-line no-nested-ternary
+          obj[value].indexOf('#/') === 0
+            ? obj[value].replace('#/', `${filePath}#/`)
+            : obj[value].indexOf('#/') !== -1
+            ? `${path.resolve(path.dirname(filePath), obj[value].split('#')[0])}#${obj[value].split('#')[1]}`
+            : obj[value];
       } else {
         obj[value] = replaceRefPath(obj[value], filePath);
       }
