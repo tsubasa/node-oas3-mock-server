@@ -62,13 +62,15 @@ const getEndpoint = (obj, url, method = '') => {
   const { paths } = obj;
   let endpoint;
 
-  Object.keys(paths).forEach(value => {
+  Object.keys(paths).some(value => {
     const pattern = `^${value.replace(/{\w+}/gi, '[\\w{}%]+')}$`;
     const re = new RegExp(pattern, 'i');
     const match = url.split('?')[0].match(re, value);
-    if (match && match.length) {
+    if (match && match.length && method in paths[value]) {
       endpoint = value;
+      return true;
     }
+    return false;
   });
 
   if (!endpoint || !hasMethod(obj, endpoint, method)) {
